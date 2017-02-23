@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+	<meta charset='UTF-8'>
+	
+	<title>NYT New Labels</title>
+	
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	
+	<!--[if !IE]><!-->
+	<style>
+		* { 
+			margin: 0; 
+			padding: 0; 
+		}
+		body { 
+			font: 14px/1.4 Georgia, Serif; 
+		}
+		#page-wrap {
+			margin: 50px;
+		}
+		p {
+			margin: 20px 0; 
+		}
+
+	/* 
+	Generic Styling, for Desktops/Laptops 
+	*/
+	table { 
+		width: 100%; 
+		border-collapse: collapse; 
+	}
+	/* Zebra striping */
+	tr:nth-of-type(odd) { 
+		background: #eee; 
+	}
+	th { 
+		background: #333; 
+		color: white; 
+		font-weight: bold; 
+		cursor: s-resize;
+		background-repeat: no-repeat;
+		background-position: 3% center;
+	}
+	td, th { 
+		padding: 6px; 
+		border: 1px solid #ccc; 
+		text-align: left; 
+	}
+	
+	th.des:after {
+		content: "\21E9";
+	}
+
+	th.aes:after {
+		content: "\21E7";
+	}
+	.area {
+    fill: #969696;
+}
+
+.line {
+    fill: none;
+    stroke: #000;
+    stroke-width: 1.5px;
+}
+	
+	/* 
+	Max width before this PARTICULAR table gets nasty
+	This query will take effect for any screen smaller than 760px
+	and also iPads specifically.
+	*/
+	@media 
+	only screen and (max-width: 760px),
+	(min-device-width: 768px) and (max-device-width: 1024px)  {
+
+		/* Force table to not be like tables anymore */
+		table, thead, tbody, th, td, tr { 
+			display: block; 
+		}
+		
+		/* Hide table headers (but not display: none;, for accessibility) */
+		thead tr { 
+			position: absolute;
+			top: -9999px;
+			left: -9999px;
+		}
+		
+		tr { border: 1px solid #ccc; }
+		
+		td { 
+			/* Behave  like a "row" */
+			border: none;
+			border-bottom: 1px solid #eee; 
+			position: relative;
+			padding-left: 50%; 
+		}
+		
+		td:before { 
+			/* Now like a table header */
+			position: absolute;
+			/* Top/left values mimic padding */
+			top: 6px;
+			left: 6px;
+			width: 45%; 
+			padding-right: 10px; 
+			white-space: nowrap;
+		}
+		
+		/*
+		Label the data
+		*/
+		td:before {
+			content: attr(data-th) ": ";
+			font-weight: bold;
+			width: 6.5em;
+			display: inline-block;
+		}
+	}
+	
+	/* Smartphones (portrait and landscape) ----------- */
+	@media only screen
+	and (min-device-width : 320px)
+	and (max-device-width : 480px) {
+		body { 
+			padding: 0; 
+			margin: 0; 
+			width: 320px; }
+		}
+
+		/* iPads (portrait and landscape) ----------- */
+		@media only screen and (min-device-width: 768px) and (max-device-width: 1024px) {
+			body { 
+				width: 495px; 
+			}
+		}
+
+	</style>
+	<!--<![endif]-->
+
+</head>
+
+<body>
+
+	<div id="page-wrap">
+
+		<h1>NYT New Labels</h1>
+
+		<p>Click the table header to sort data according to that column</p>
+
+	</div>
+	<script type="text/javascript" src="http://d3js.org/d3.v3.min.js"></script>
+	<script type="text/javascript">
+		const monthNames = [ "January", "February", "March", "April", "May", "June",
+		"July", "August", "September", "October", "November", "December" ];
+
+		var maxCount = 58;
+
+		function diff(from, to) {
+			var arr = {};
+			var datFrom = new Date(from);
+			var datTo = new Date(to);
+			var fromYear =  datFrom.getFullYear();
+			var toYear =  datTo.getFullYear();
+			var diffYear = (12 * (toYear - fromYear)) + datTo.getMonth();
+
+			for (var i = datFrom.getMonth(); i <= diffYear; i++) {
+				var monthString =  monthNames[i%12] + " " + Math.floor(fromYear+(i/12));
+				arr[monthString] =  0;
+			}        
+
+			return arr;
+		}
+
+
+		function getArticlesTimelineData(obj) {
+			articles = obj.article_list.results;
+			var months = diff('1 May 2009', '1 March 2017');
+			articles.forEach((article)=>{
+				date = new Date(article.date)
+				dateName = monthNames[date.getMonth()] + " " + date.getFullYear();
+				months[dateName]+=1
+			});
+			var arr = []
+			Object.keys(months).forEach((date)=>{
+				arr.push({'date': date, 'count':months[date]});
+				//maxCount = d3.max([maxCount, months[date]]);
+
+			})
+			obj.timeline = arr;
+		}
+
+		function timeSeriesChart() {
+			var margin = {top: 20, right: 20, bottom: 20, left: 20},
+			width = 760,
+			height = 120,
+			xValue = function(d) { return d[0]; },
+			yValue = function(d) { return d[1]; },
+			xScale = d3.time.scale(),
+			yScale = d3.scale.linear(),
+			xAxis = d3.svg.axis().scale(xScale).orient("bottom").tickSize(6, 0),
+			area = d3.svg.area().x(X).y1(Y),
+			line = d3.svg.line().x(X).y(Y);
+
+			function chart(selection) {
+				selection.each(function(data) {
+
+      // Convert data to standard representation greedily;
+      // this is needed for nondeterministic accessors.
+      data = data.map(function(d, i) {
+      	return [xValue.call(data, d, i), yValue.call(data, d, i)];
+      });
+      console.log(data)
+
+      // Update the x-scale.
+      xScale
+      .domain(d3.extent(data, function(d) { return d[0]; }))
+      .range([0, width - margin.left - margin.right]);
+
+      // Update the y-scale.
+      yScale
+      .domain([0, maxCount])
+      .range([height - margin.top - margin.bottom, 0]);
+
+      // Select the svg element, if it exists.
+      var svg = d3.select(this).selectAll("svg").data([data]);
+
+      // Otherwise, create the skeletal chart.
+      var gEnter = svg.enter().append("svg").append("g");
+      gEnter.append("path").attr("class", "area");
+      gEnter.append("path").attr("class", "line");
+      gEnter.append("g").attr("class", "x axis");
+
+      // Update the outer dimensions.
+      svg .attr("width", width)
+      .attr("height", height);
+
+      // Update the inner dimensions.
+      var g = svg.select("g")
+      .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+      // Update the area path.
+      g.select(".area")
+      .attr("d", area.y0(yScale.range()[0]));
+
+      // Update the line path.
+      g.select(".line")
+      .attr("d", line);
+
+      // Update the x-axis.
+      g.select(".x.axis")
+      .attr("transform", "translate(0," + yScale.range()[0] + ")")
+      .call(xAxis);
+  });
+			}
+
+  // The x-accessor for the path generator; xScale ∘ xValue.
+  function X(d) {
+  	return xScale(d[0]);
+  }
+
+  // The x-accessor for the path generator; yScale ∘ yValue.
+  function Y(d) {
+  	return yScale(d[1]);
+  }
+
+  chart.margin = function(_) {
+  	if (!arguments.length) return margin;
+  	margin = _;
+  	return chart;
+  };
+
+  chart.width = function(_) {
+  	if (!arguments.length) return width;
+  	width = _;
+  	return chart;
+  };
+
+  chart.height = function(_) {
+  	if (!arguments.length) return height;
+  	height = _;
+  	return chart;
+  };
+
+  chart.x = function(_) {
+  	if (!arguments.length) return xValue;
+  	xValue = _;
+  	return chart;
+  };
+
+  chart.y = function(_) {
+  	if (!arguments.length) return yValue;
+  	yValue = _;
+  	return chart;
+  };
+
+  return chart;
+}
+
+var chart = timeSeriesChart()
+.x(function(d) { return formatDate.parse(d.date); })
+.y(function(d) { return +d.count; });
+
+var formatDate = d3.time.format("%B %Y");
+
+d3.json("missing_labels_data_timeline.json", function(error, data){
+	data.forEach((obj)=>{
+		if (!('timeline' in obj)){
+			getArticlesTimelineData(obj);
+		}
+		else {
+			var arr = []
+			Object.keys(obj.timeline).forEach((date)=>{
+				arr.push({'date': date, 'count':obj.timeline[date]});
+				//maxCount = d3.max([maxCount, months[date]]);
+			})
+			arr.sort((a,b)=>{
+				return new Date(b.date) - new Date(a.date);
+			})
+			obj.timeline = arr;
+
+		}
+	})
+	if (error) throw error;
+
+	var sortAscending = true;
+	var table = d3.select('#page-wrap').append('table');
+	var titles = ['concept_name', 'concept_created', 'concept_updated', 'total_articles', 'timeline'];
+	var headers = table.append('thead').append('tr')
+	.selectAll('th')
+	.data(titles).enter()
+	.append('th')
+	.text(function (d) {
+		return d;
+	})
+	.on('click', function (d) {
+		headers.attr('class', 'header');
+		sort_function = (a, b) =>{
+			return a[d].toLowerCase().localeCompare(b[d].toLowerCase());
+		}
+		if (d==='total_articles') {
+			sort_function = (a, b) =>{
+				getArticlesTimelineData(a);
+				if(a.article_list.total < b.article_list.total) return -1;
+				if(a.article_list.total > b.article_list.total) return 1;
+				return 0;
+			}
+		}
+
+		if (sortAscending) {
+			rows.sort(function(a, b) {
+				return sort_function(a,b);
+			});
+			sortAscending = false;
+			this.className = 'aes';
+		} else {
+			rows.sort(function(a, b) { 
+				return sort_function(b,a);
+
+			});
+			sortAscending = true;
+			this.className = 'des';
+		}
+
+	});
+
+	var rows = table.append('tbody').selectAll('tr')
+	.data(data).enter()
+	.append('tr');
+	rows.selectAll('td')
+	.data(function (d) {
+		return titles.map(function (k) {
+			var value = d[k];
+			if (k==='total_articles') {
+				value = d.article_list.total;
+			}
+			if (k==='timeline') {
+				value = '';
+			}
+			return { 'value': value, 'name': k, 'timeline':d.timeline};
+
+		});
+	}).enter()
+	.append('td')
+	.attr('data-th', function (d) {
+		return d.name;
+	})
+	.text(function (d) {
+		return d.value;
+	});
+
+	d3.selectAll('td').filter((d)=>{
+		return d.name==='timeline'
+	}).datum((d)=>d.timeline).call(chart);
+});
+</script>
+</body>
+
+</html>
