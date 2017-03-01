@@ -155,7 +155,7 @@
 		const monthNames = [ "January", "February", "March", "April", "May", "June",
 		"July", "August", "September", "October", "November", "December" ];
 
-		var maxCount = 58;
+		var maxCount = 139;
 
 		function diff(from, to) {
 			var arr = {};
@@ -211,7 +211,6 @@
       data = data.map(function(d, i) {
       	return [xValue.call(data, d, i), yValue.call(data, d, i)];
       });
-      console.log(data)
 
       // Update the x-scale.
       xScale
@@ -220,7 +219,7 @@
 
       // Update the y-scale.
       yScale
-      .domain([0, maxCount])
+      .domain([0, Math.max(30, d3.max(data, function(d) { return d[1]; }))])
       .range([height - margin.top - margin.bottom, 0]);
 
       // Select the svg element, if it exists.
